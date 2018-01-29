@@ -29,8 +29,8 @@
       input int zigzag_Backstep_LineA =0;    // Zigzag Backstep Value
       
       double zigzag_val[10];     // amount of zigzag required            
-      int zigzag_pivot_bar_index[5];
-      double zigzag_pivot_bar_index_value[5];
+      int zigzag_pivot_bar[5];
+      double zigzag_pivot_bar_value[5];
 
    //--- 3. TT
       input int TurtleTradePeriod_S = 2;     // TT's short Trade Period
@@ -90,12 +90,12 @@ void OnTick()
 //+------------------------------------------------------------------+
    void M1_The_Long_Trend (){
       // collect using variables
-      bool hh = ((zigzag_val[0] > zigzag_val[2]) && (zigzag_val[2] > zigzag_val[4])) ;
-      text [8] = "zz[0] > zz[2]: " +(zigzag_val[0] > zigzag_val[2]);
-      text [9] = "zz[2] > zz[4]: " +(zigzag_val[2] > zigzag_val[4]);
+      bool hh = ((zigzag_pivot_bar_value[0] > zigzag_pivot_bar_value[2]) && (zigzag_pivot_bar_value[2] > zigzag_pivot_bar_value[4])) ;
+      text [8] = "zz[0] > zz[2]: " +(zigzag_pivot_bar_value[0] > zigzag_pivot_bar_value[2]);
+      text [9] = "zz[2] > zz[4]: " +(zigzag_pivot_bar_value[2] > zigzag_pivot_bar_value[4]);
       text [10]= "zz[0] > zz[2]> zz[4]: " +hh;
       if (hh){
-         text [11] = hh + TimeCurrent();
+         text [11] = hh +","+ TimeCurrent();
          debug++;
          text [12] = debug;
       }
@@ -134,9 +134,9 @@ void OnTick()
                while(i<5){
                   double zigzag_temp1 = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,n);
                   if (zigzag_temp1 !=0) {
-                     zigzag_pivot_bar_index[i] = n ;
-                     zigzag_pivot_bar_index_value[i] = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,n);
-                     text[i] = zigzag_pivot_bar_index[i]+" at bar: "+ zigzag_pivot_bar_index_value[i];
+                     zigzag_pivot_bar[i] = n ;
+                     zigzag_pivot_bar_value[i] = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,n);
+                     text[i] = zigzag_pivot_bar[i]+" at bar: "+ zigzag_pivot_bar_value[i];
                      i++ ;                     
                   }            
                   n++;                              
