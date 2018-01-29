@@ -20,10 +20,17 @@
       input int fast_ema_period = 21 ;       // MACD fast ema period
       input int slow_ema_period = 60 ;       // MACD slow ema period
       input int signal_line = 9 ;            // MACD signal line
+      
+      double macd_main_val[10];     // amount of MACD main required
+      double macd_signal_val[10];     // amount of MACD signal required 
    //--- 2. Zigzag
       input int zigzag_Depth_LineA = 60 ;    // Zigzag Depth Value
       input int zigzag_Deviation_LineA =0 ;  // Zigzag Deviation Value
       input int zigzag_Backstep_LineA =0;    // Zigzag Backstep Value
+      
+      double zigzag_val[10];     // amount of zigzag required            
+      int zigzag_pivot_bar_index[5];
+      double zigzag_pivot_bar_index_value[5];
 
    //--- 3. TT
       input int TurtleTradePeriod_S = 2;     // TT's short Trade Period
@@ -32,7 +39,10 @@
       input int TurtleStopPeriod_M = 0;      // TT's middle Stop Period  
       input int TurtleTradePeriod_L = 30;    // TT's long Trade Period
       input int TurtleStopPeriod_L = 0;      // TT's long Stop Period
-   
+
+      double tt_S_val[10];     // amount of tt short required  
+      double tt_M_val[10];     // amount of tt medium required  
+      double tt_L_val[10];     // amount of tt long required    
    
 //--- Order's variables----------------------------------+ 
       int      MagicNumber  = 2017;          //Magic Number
@@ -43,11 +53,12 @@
       
 //--- Others variables----------------------------------+   
 
-
       bool thisIsNewBar = false ;   //--- Timer parameters checking new bar.
       int barCount ;                //just for debuging new Bar
       bool onceAbar =false ;        //variable control do one order action per bar
-      string text[20];              //Array of String store custom texts on screen   
+      string text[20];              //Array of String store custom texts on screen  
+      
+      int debug;                    //debug variable 
 
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
@@ -65,9 +76,10 @@ void OnTick()
       getVariable_Zigzag();
       getVariable_TT();
       
-      
-      BM1_The_Long_Trend ();
-      
+//--- start calling business logic here      
+      M1_The_Long_Trend ();
+
+//--- do routines stuff here      
       printInfo(); // print debug text on screen
   }
   
@@ -76,9 +88,17 @@ void OnTick()
 //+------------------------------------------------------------------+
 //| Business logic                                                   |
 //+------------------------------------------------------------------+
-   void BM1_The_Long_Trend (){
+   void M1_The_Long_Trend (){
       // collect using variables
-      
+      bool hh = ((zigzag_val[0] > zigzag_val[2]) && (zigzag_val[2] > zigzag_val[4])) ;
+      text [8] = "zz[0] > zz[2]: " +(zigzag_val[0] > zigzag_val[2]);
+      text [9] = "zz[2] > zz[4]: " +(zigzag_val[2] > zigzag_val[4]);
+      text [10]= "zz[0] > zz[2]> zz[4]: " +hh;
+      if (hh){
+         text [11] = hh + TimeCurrent();
+         debug++;
+         text [12] = debug;
+      }
       // logic 
    }
 
@@ -94,9 +114,7 @@ void OnTick()
 
 
    //--- 1. MACD
-      void getVariable_MACD(){
-         double macd_main_val[10];     // amount of MACD main required
-         double macd_signal_val[10];     // amount of MACD signal required          
+      void getVariable_MACD(){         
            for(int i=0; i < ArraySize(macd_main_val) ; i++){
                macd_main_val[i] = iMACD(NULL,0,fast_ema_period, slow_ema_period, signal_line,PRICE_CLOSE,MODE_MAIN,i);
                macd_signal_val[i] = iMACD(NULL,0,fast_ema_period, slow_ema_period, signal_line,PRICE_CLOSE,MODE_SIGNAL,i);  
@@ -104,24 +122,21 @@ void OnTick()
            }        
       }   
    //--- 2. Zigzag
-      void getVariable_Zigzag(){
-         double zigzag_val[10];     // amount of zigzag required       
+      void getVariable_Zigzag(){      
            for(int i=0; i < ArraySize(zigzag_val) ; i++){
                zigzag_val[i] = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,i);
            } 
          getZigzag_Last_Pivot();         
       }
-      void getZigzag_Last_Pivot(){
-            int zigzag_pivot_bar_index[5];
-            double zigzag_pivot_bar_index_value[5];
-            
+
+      void getZigzag_Last_Pivot(){            
             int i=0; int n = 0;            
                while(i<5){
                   double zigzag_temp1 = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,n);
                   if (zigzag_temp1 !=0) {
                      zigzag_pivot_bar_index[i] = n ;
                      zigzag_pivot_bar_index_value[i] = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,n);
-                     //text[i] = zigzag_pivot_bar_index[i]+" at bar: "+ zigzag_pivot_bar_index_value[i];
+                     text[i] = zigzag_pivot_bar_index[i]+" at bar: "+ zigzag_pivot_bar_index_value[i];
                      i++ ;                     
                   }            
                   n++;                              
@@ -129,10 +144,7 @@ void OnTick()
       }
       
    //--- 3. TT
-      void getVariable_TT(){
-         double tt_S_val[10];     // amount of tt short required  
-         double tt_M_val[10];     // amount of tt medium required  
-         double tt_L_val[10];     // amount of tt long required       
+      void getVariable_TT(){      
            for(int i=0; i < ArraySize(tt_S_val) ; i++){
                tt_S_val[i] = iCustom ( NULL, 0, "TheTurtleTradingChannel",TurtleTradePeriod_S,TurtleStopPeriod_S, false,false, 0,i );
            } 
