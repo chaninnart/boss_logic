@@ -77,33 +77,54 @@ void OnTick()
       getVariable_TT();
       
 //--- start calling business logic here      
-      M1_The_Long_Trend ();
+      flowchart();
 
 //--- do routines stuff here      
       printInfo(); // print debug text on screen
   }
+
   
- 
+void flowchart(){
+      // collect using variables
+      bool hh_M1 = ((zigzag_pivot_bar_value[0] > zigzag_pivot_bar_value[2]) && (zigzag_pivot_bar_value[2] > zigzag_pivot_bar_value[4])) ;
+      bool ll_M1 = ((zigzag_pivot_bar_value[0] < zigzag_pivot_bar_value[2]) && (zigzag_pivot_bar_value[2] < zigzag_pivot_bar_value[4])) ;
+      bool hh_M2 = ((zigzag_pivot_bar_value[0] > zigzag_pivot_bar_value[2]) && (zigzag_pivot_bar_value[2] > zigzag_pivot_bar_value[1])) ;
+      bool ll_M2 = ((zigzag_pivot_bar_value[0] < zigzag_pivot_bar_value[2]) && (zigzag_pivot_bar_value[2] < zigzag_pivot_bar_value[1])) ;      
+      if (hh_M1){text [11] = "Higher High: "+ TimeCurrent();} if (ll_M1){text [12] = "Lower Low: "+ TimeCurrent();}  //debug variable
+
+      int condition;      
+      if (hh_M1||ll_M1){condition = 1;}      
+           
+      // logic
+      switch (condition){
+         case 1: M1_The_Long_Trend (); break;
+         case 2: M2_The_Trend_Beginning (); break;         
+      }
+} 
   
 //+------------------------------------------------------------------+
 //| Business logic                                                   |
 //+------------------------------------------------------------------+
    void M1_The_Long_Trend (){
-      // collect using variables
-      bool hh = ((zigzag_pivot_bar_value[0] > zigzag_pivot_bar_value[2]) && (zigzag_pivot_bar_value[2] > zigzag_pivot_bar_value[4])) ;
-      text [8] = "zz[0] > zz[2]: " +(zigzag_pivot_bar_value[0] > zigzag_pivot_bar_value[2]);
-      text [9] = "zz[2] > zz[4]: " +(zigzag_pivot_bar_value[2] > zigzag_pivot_bar_value[4]);
-      text [10]= "zz[0] > zz[2]> zz[4]: " +hh;
-      if (hh){
-         text [11] = hh +","+ TimeCurrent();
-         debug++;
-         text [12] = debug;
-      }
-      // logic 
+      bool tt_L_is_below = (tt_L_val[0] != 2147483647);
+      switch(tt_L_is_below){
+         case true:
+            closeAllSellOrder();
+            if(countOrder(0) == 0){openBuy("BUY M1");}
+            break;
+         case false: 
+            closeAllBuyOrder();           
+            if(countOrder(1) == 0){openSell("SELL M1");}
+            break;
+         }    
    }
 
 //---
-   
+   void M2_The_Trend_Beginning (){
+    
+   }
+
+//---   
 
 //+------------------------------------------------------------------+
 
@@ -111,7 +132,6 @@ void OnTick()
 //+------------------------------------------------------------------+
 //| Indicator's function                                             |
 //+------------------------------------------------------------------+
-
 
    //--- 1. MACD
       void getVariable_MACD(){         
@@ -135,8 +155,8 @@ void OnTick()
                   double zigzag_temp1 = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,n);
                   if (zigzag_temp1 !=0) {
                      zigzag_pivot_bar[i] = n ;
-                     zigzag_pivot_bar_value[i] = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,n);
-                     text[i] = zigzag_pivot_bar[i]+" at bar: "+ zigzag_pivot_bar_value[i];
+                     zigzag_pivot_bar_value[i] = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,n); //debug variable
+                     //text[i] = zigzag_pivot_bar[i]+" at bar: "+ zigzag_pivot_bar_value[i];
                      i++ ;                     
                   }            
                   n++;                              
