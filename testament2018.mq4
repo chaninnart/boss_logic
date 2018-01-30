@@ -23,6 +23,11 @@
       
       double macd_main_val[10];     // amount of MACD main required
       double macd_signal_val[10];     // amount of MACD signal required 
+      
+      int macd_pivot_bar[5] ;
+      double macd_pivot_main_val[5] ;
+      double macd_pivot_signal_val[5]; 
+      
    //--- 2. Zigzag
       input int zigzag_Depth_LineA = 60 ;    // Zigzag Depth Value
       input int zigzag_Deviation_LineA =0 ;  // Zigzag Deviation Value
@@ -30,7 +35,7 @@
       
       double zigzag_val[10];     // amount of zigzag required            
       int zigzag_pivot_bar[5];
-      double zigzag_pivot_bar_value[5];
+      double zigzag_pivot_bar_val[5];
 
    //--- 3. TT
       input int TurtleTradePeriod_S = 2;     // TT's short Trade Period
@@ -72,8 +77,8 @@ void OnTick()
   {
 //--- start workflow in every tick here
       DetectNewBar();
-      getVariable_MACD();
       getVariable_Zigzag();
+      getVariable_MACD();  // get MACD after Zigzag because using Index pivot from Zigzag
       getVariable_TT();
       
 //--- start calling business logic here      
@@ -86,19 +91,30 @@ void OnTick()
   
 void flowchart(){
       // collect using variables
-      bool hh_M1 = ((zigzag_pivot_bar_value[0] > zigzag_pivot_bar_value[2]) && (zigzag_pivot_bar_value[2] > zigzag_pivot_bar_value[4])) ;
-      bool ll_M1 = ((zigzag_pivot_bar_value[0] < zigzag_pivot_bar_value[2]) && (zigzag_pivot_bar_value[2] < zigzag_pivot_bar_value[4])) ;
-      bool hh_M2 = ((zigzag_pivot_bar_value[0] > zigzag_pivot_bar_value[2]) && (zigzag_pivot_bar_value[2] > zigzag_pivot_bar_value[1])) ;
-      bool ll_M2 = ((zigzag_pivot_bar_value[0] < zigzag_pivot_bar_value[2]) && (zigzag_pivot_bar_value[2] < zigzag_pivot_bar_value[1])) ;      
+      bool hh_M1 = ((zigzag_pivot_bar_val[0] > zigzag_pivot_bar_val[2]) && (zigzag_pivot_bar_val[2] > zigzag_pivot_bar_val[4])) ;
+      bool ll_M1 = ((zigzag_pivot_bar_val[0] < zigzag_pivot_bar_val[2]) && (zigzag_pivot_bar_val[2] < zigzag_pivot_bar_val[4])) ;
+      
+      bool hh_M2 = ((zigzag_pivot_bar_val[0] > zigzag_pivot_bar_val[2]) && (zigzag_pivot_bar_val[2] > zigzag_pivot_bar_val[1])) ;
+      bool ll_M2 = ((zigzag_pivot_bar_val[0] < zigzag_pivot_bar_val[2]) && (zigzag_pivot_bar_val[2] < zigzag_pivot_bar_val[1])) ; 
+      
+      bool last_zigzag_is_low = (zigzag_val[0] != 2147483647);
+      bool macd_at_pivot0_greater_00029 = (macd_pivot_main_val[0] > 0.00029); 
+      bool macd_at_pivot0_less_00029 = (macd_pivot_main_val[0] < -0.00029);    
+       
+      
       if (hh_M1){text [11] = "Higher High: "+ TimeCurrent();} if (ll_M1){text [12] = "Lower Low: "+ TimeCurrent();}  //debug variable
 
       int condition;      
-      if (hh_M1||ll_M1){condition = 1;}      
+      if (hh_M1||ll_M1){condition = 1;}
+      if (hh_M2||ll_M2){condition = 2;} 
+      if ((last_zigzag_is_low && macd_at_pivot0_greater_00029) || (!last_zigzag_is_low && macd_at_pivot0_less_00029)) {condition =3;}     
            
       // logic
       switch (condition){
          case 1: M1_The_Long_Trend (); break;
-         case 2: M2_The_Trend_Beginning (); break;         
+         case 2: M2_The_Trend_Beginning (); break; 
+         case 3: M3_The_Potential_Rev (); break;
+         case 4: M4_The_Basement_Rev (); break;        
       }
 } 
   
@@ -118,14 +134,41 @@ void flowchart(){
             break;
          }    
    }
-
 //---
    void M2_The_Trend_Beginning (){
+      bool tt_M_is_below = (tt_M_val[0] != 2147483647);
+      switch(tt_M_is_below){
+         case true:
+            closeAllSellOrder();
+            if(countOrder(0) == 0){openBuy("BUY M2");}
+            break;
+         case false: 
+            closeAllBuyOrder();           
+            if(countOrder(1) == 0){openSell("SELL M2");}
+            break;
+      }    
     
+   }
+//---   
+   void M3_The_Potential_Rev (){
+      bool tt_S_is_below = (tt_S_val[0] != 2147483647);
+      switch(tt_S_is_below){
+         case true:
+            closeAllSellOrder();
+            if(countOrder(0) == 0){openBuy("BUY M3");}
+            break;
+         case false: 
+            closeAllBuyOrder();           
+            if(countOrder(1) == 0){openSell("SELL M3");}
+            break;
+      }  
+   
    }
 
 //---   
-
+   void M4_The_Basement_Rev (){
+   
+   }
 //+------------------------------------------------------------------+
 
   
@@ -139,7 +182,7 @@ void flowchart(){
                macd_main_val[i] = iMACD(NULL,0,fast_ema_period, slow_ema_period, signal_line,PRICE_CLOSE,MODE_MAIN,i);
                macd_signal_val[i] = iMACD(NULL,0,fast_ema_period, slow_ema_period, signal_line,PRICE_CLOSE,MODE_SIGNAL,i);  
                //text[i] = DoubleToStr(macd_main_val[i],5)+ "," + DoubleToStr(macd_signal_val[i],5);
-           }        
+           }          
       }   
    //--- 2. Zigzag
       void getVariable_Zigzag(){      
@@ -155,8 +198,12 @@ void flowchart(){
                   double zigzag_temp1 = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,n);
                   if (zigzag_temp1 !=0) {
                      zigzag_pivot_bar[i] = n ;
-                     zigzag_pivot_bar_value[i] = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,n); //debug variable
+                     zigzag_pivot_bar_val[i] = iCustom(Symbol(),0,"zigzag",zigzag_Depth_LineA,zigzag_Deviation_LineA,zigzag_Backstep_LineA,0,n); //debug variable
                      //text[i] = zigzag_pivot_bar[i]+" at bar: "+ zigzag_pivot_bar_value[i];
+                     macd_pivot_bar[i] = n ; 
+                     macd_pivot_main_val[i] = iMACD(NULL,0,fast_ema_period, slow_ema_period, signal_line,PRICE_CLOSE,MODE_MAIN,n);
+                     macd_pivot_signal_val[i] = iMACD(NULL,0,fast_ema_period, slow_ema_period, signal_line,PRICE_CLOSE,MODE_SIGNAL,n); 
+                     
                      i++ ;                     
                   }            
                   n++;                              
